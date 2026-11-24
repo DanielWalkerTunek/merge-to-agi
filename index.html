@@ -323,9 +323,11 @@ async function fetchBoard(){
   const b=localBoard().filter(x=>x.score>0).sort((a,c)=>c.score-a.score);const i=b.findIndex(x=>x.player_id===pid);return{top:b.slice(0,10),me:i>=10?{...b[i],rank:i+1}:null}}
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(r,rank){return`<li class="${r.player_id===pid?'me':''}"><span class="rk">${rank}</span><span class="dot" style="background:${COL[Math.max(0,Math.min(8,r.best_model|0))]}"></span><span class="nm">${esc(r.nickname)}</span><span class="sc">${(r.score|0).toLocaleString('en')}</span></li>`}
-async function showBoard(id='board'){const el=$(id);el.innerHTML='<li class="msg">Loading top list…</li>';
-  try{const{top,me}=await fetchBoard();el.innerHTML=top.length?top.map((r,i)=>row(r,i+1)).join('')+(me?'<li class="gap">⋯</li>'+row(me,me.rank):''):'<li class="msg">No scores yet. Be the first!</li>'}
-  catch(e){el.innerHTML='<li class="msg">Top list offline right now</li>'}}
+let boardReq=0;
+async function showBoard(id='board'){const el=$(id),req=++boardReq;if(!el.children.length||el.querySelector('.msg'))el.innerHTML='<li class="msg">Loading top list…</li>';
+  try{const{top,me}=await fetchBoard();if(req!==boardReq)return; // a newer load is on its way: ignore this stale one
+    el.innerHTML=top.length?top.map((r,i)=>row(r,i+1)).join('')+(me?(me.rank>top.length+1?'<li class="gap">⋯</li>':'')+row(me,me.rank):''):'<li class="msg">No scores yet. Be the first!</li>'}
+  catch(e){if(req===boardReq)el.innerHTML='<li class="msg">Top list offline right now</li>'}}
 function showWho(edit){$('who').hidden=false;$('as').hidden=true;$('nick').value=profile?profile.nick:'';$('mail').value=profile?profile.mail:'';$('save').textContent=edit?'Save':'Add to top list';$('nick').focus()}
 function showAs(){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Saved as '+(profile.nick||'Anonymous blob')}
 let lastRun=null;
@@ -356,7 +358,7 @@ function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localS
   $('final').textContent=score.toLocaleString('en');$('bestline').textContent=score>=best&&score>0?'New best!':'Best '+best.toLocaleString('en');
   $('over').hidden=false;lastRun={score,lv:maxLv,saved:false};$('change').textContent='change';
   if(!profile)showWho(false);else if(profile.skip){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}else showAs();
-  if(score>0)saveRun();showBoard();if(profile)$('again').focus()}
+  if(score>0&&profile&&!profile.skip)saveRun();else showBoard();if(profile)$('again').focus()}
 
 function moment(txt,col){const e=$('agiText');e.textContent=txt;e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
 
