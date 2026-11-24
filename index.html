@@ -269,8 +269,8 @@ function trySwap(x,y){if(state!=='run'||charging)return false;const{nx,ny,nr}=ne
   if(!swapUsed){[cur,nxt]=[nxt,cur];swapUsed=true;swapT=.25;sfx.swap();buzz(8)}return true}
 function shoot(){if(state!=='run'||cool>0)return;const v=speed();blobs.push(makeBlob(cur,LX,LY,Math.sin(aimA)*v,Math.cos(aimA)*v,1));cur=nxt;nxt=pick();cool=.42;swapUsed=false;sfx.shoot()}
 function setAim(x,y){aimPX=x;aimPY=y;const dx=x-LX,dy=Math.max(24,y-LY);aimA=Math.max(-AMAX,Math.min(AMAX,Math.atan2(dx,dy)))}
-// After each Singularity every model gets 10% bigger (existing blobs swell smoothly), so the jar fills faster
-const GROW=1.1;
+// After each Singularity every model gets 2% bigger (existing blobs swell smoothly), so the jar fills faster
+const GROW=1.02;
 function growAll(){SIZE*=GROW;R=BASE.map(r=>r*SIZE);for(const b of blobs){b.s/=GROW;b.r=R[b.lv];b.m=b.r*b.r/b.n}}
 function burst(x,y,c,n,sp){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.4+Math.random()*.8);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,c,r:2+Math.random()*3})}}
 
