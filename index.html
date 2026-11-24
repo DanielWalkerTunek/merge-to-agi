@@ -274,8 +274,8 @@ function trySwap(x,y){if(state!=='run'||charging)return false;const{nx,ny,nr}=ne
   if(!swapUsed){[cur,nxt]=[nxt,cur];swapUsed=true;swapT=.25;sfx.swap();buzz(8)}return true}
 function shoot(){if(state!=='run'||cool>0)return;const v=speed();blobs.push(makeBlob(cur,LX,LY,Math.sin(aimA)*v,Math.cos(aimA)*v,1));cur=nxt;nxt=pick();cool=.42;swapUsed=false;sfx.shoot()}
 function setAim(x,y){aimPX=x;aimPY=y;const dx=x-LX,dy=Math.max(24,y-LY);aimA=Math.max(-AMAX,Math.min(AMAX,Math.atan2(dx,dy)))}
-// After each Singularity every model gets 2% bigger (existing blobs swell smoothly), so the jar fills faster
-const GROW=1.02;
+// After each Singularity every model gets 4% bigger (existing blobs swell smoothly), so the jar fills faster
+const GROW=1.04;
 function growAll(){SIZE*=GROW;R=BASE.map(r=>r*SIZE);for(const b of blobs){b.s/=GROW;b.r=R[b.lv];b.m=b.r*b.r/b.n}}
 function burst(x,y,c,n,sp){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.4+Math.random()*.8);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,c,r:2+Math.random()*3})}}
 
@@ -374,9 +374,13 @@ function moment(txt,col){const e=$('agiText');e.textContent=txt;e.style.color=co
 /* ================= drawing ================= */
 // Very subtle LiU AI Society watermark inside the jar. Put the society logo in the repo as logo.png
 // (transparent background works best) and it shows above the text; without it only the text is drawn.
-const LOGO=new Image();let logoOk=false;LOGO.onload=()=>{logoOk=true};LOGO.src='logo.png';
+// The society logo is white (made for the dark website), so it is re-coloured to the game's ink once it loads.
+const LOGO=new Image();let logoOk=false,LOGOT=null;
+LOGO.onload=()=>{try{const w=LOGO.naturalWidth||512,h=LOGO.naturalHeight||512,k=512/Math.max(w,h),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
+  const x=c.getContext('2d');x.drawImage(LOGO,0,0,c.width,c.height);x.globalCompositeOperation='source-in';x.fillStyle=INK;x.fillRect(0,0,c.width,c.height);LOGOT=c;logoOk=true}catch(e){}};
+LOGO.src='https://www.liuais.com/images/LiUAISlogo.svg';
 function watermark(){const cx=LX,cy=TOPLINE+(FLOOR-TOPLINE)*.36,fs=CW*.085;ctx.save();ctx.globalAlpha=.055;
-  if(logoOk){const lw=CW*.34,lh=lw*LOGO.height/LOGO.width;ctx.globalAlpha=.06;ctx.drawImage(LOGO,cx-lw/2,cy-lh-fs*.6,lw,lh);ctx.globalAlpha=.055}
+  if(logoOk){const lw=CW*.34,lh=lw*LOGOT.height/LOGOT.width;ctx.globalAlpha=.06;ctx.drawImage(LOGOT,cx-lw/2,cy-lh-fs*.6,lw,lh);ctx.globalAlpha=.055}
   ctx.fillStyle=INK;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`600 ${fs}px Fredoka,system-ui,sans-serif`;ctx.fillText('LiU AI Society',cx,cy+(logoOk?fs*.2:0));ctx.restore()}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
 function path(xs,ys,n){ // smooth Catmull-Rom loop
