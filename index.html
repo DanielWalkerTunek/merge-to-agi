@@ -125,8 +125,13 @@ const PTS=[0,4,10,25,60,140,320,700,1500],INK='#3b2f4a';
    so the jar never moves or shrinks under the blobs. */
 let BASE=[],SIZE=1,W,H,CW,BL,BR,FLOOR,TOP,LX,LY,TOPLINE,R=[],SW=0,SH=0,DPR=1,SC=1,OX=0,OY=0;
 function layout(){W=SW;H=SH;SC=1;OX=OY=0;
-  CW=Math.min(W-28,H*.6);BL=(W-CW)/2;BR=BL+CW;FLOOR=H-Math.max(20,H*.03);
-  BASE=COL.map((_,i)=>CW*.05225*Math.pow(1.245,i));R=BASE.map(r=>r*SIZE);LY=Math.max(90,H*.11)+R[3];TOP=LY+R[3]+10;TOPLINE=TOP+8;LX=(BL+BR)/2}
+  // Same jar shape on every device (fair top list): playable height = JAR_RATIO x width.
+  // Launcher sits above the jar; whatever space is left goes above the launcher.
+  const bot=Math.max(20,H*.03),topPad=80,r3k=.05225*Math.pow(1.245,3);
+  CW=Math.min(W-28,(H-bot-topPad-18)/(JAR_RATIO+2*r3k));BL=(W-CW)/2;BR=BL+CW;FLOOR=H-bot;
+  BASE=COL.map((_,i)=>CW*.05225*Math.pow(1.245,i));R=BASE.map(r=>r*SIZE);
+  TOPLINE=FLOOR-JAR_RATIO*CW;TOP=TOPLINE-8;LY=TOP-10-BASE[3];LX=(BL+BR)/2}
+const JAR_RATIO=1.7;
 function fit(){SC=Math.min(SW/W,SH/H);OX=(SW-W*SC)/2;OY=(SH-H*SC)/2}
 function screen(){DPR=Math.min(2,window.devicePixelRatio||1);SW=innerWidth;SH=innerHeight;cv.width=SW*DPR;cv.height=SH*DPR}
 screen();layout();
@@ -367,6 +372,12 @@ function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localS
 function moment(txt,col){const e=$('agiText');e.textContent=txt;e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
 
 /* ================= drawing ================= */
+// Very subtle LiU AI Society watermark inside the jar. Put the society logo in the repo as logo.png
+// (transparent background works best) and it shows above the text; without it only the text is drawn.
+const LOGO=new Image();let logoOk=false;LOGO.onload=()=>{logoOk=true};LOGO.src='logo.png';
+function watermark(){const cx=LX,cy=TOPLINE+(FLOOR-TOPLINE)*.36,fs=CW*.085;ctx.save();ctx.globalAlpha=.055;
+  if(logoOk){const lw=CW*.34,lh=lw*LOGO.height/LOGO.width;ctx.globalAlpha=.06;ctx.drawImage(LOGO,cx-lw/2,cy-lh-fs*.6,lw,lh);ctx.globalAlpha=.055}
+  ctx.fillStyle=INK;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`600 ${fs}px Fredoka,system-ui,sans-serif`;ctx.fillText('LiU AI Society',cx,cy+(logoOk?fs*.2:0));ctx.restore()}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
 function path(xs,ys,n){ // smooth Catmull-Rom loop
   ctx.beginPath();ctx.moveTo(xs[0],ys[0]);
@@ -482,7 +493,7 @@ function draw(){
   const t=performance.now()/1000;
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle='#f3f0fa';ctx.fillRect(0,0,SW,SH);ctx.setTransform(DPR*SC,0,0,DPR*SC,OX*DPR,OY*DPR);
   ctx.fillStyle='#e8e3f5';rrect(BL-8,TOP-8,CW+16,FLOOR-TOP+16,26);ctx.fill();
-  const dk=state==='run'?Math.min(1,danger/5):0;ctx.fillStyle=`rgb(${239+16*dk|0},${235-12*dk|0},${248-16*dk|0})`;rrect(BL,TOP,CW,FLOOR-TOP,20);ctx.fill();
+  const dk=state==='run'?Math.min(1,danger/5):0;ctx.fillStyle=`rgb(${239+16*dk|0},${235-12*dk|0},${248-16*dk|0})`;rrect(BL,TOP,CW,FLOOR-TOP,20);ctx.fill();watermark();
   ctx.strokeStyle=danger>0&&Math.floor(t*6)%2?'#ff6f8f':'rgba(255,111,143,.35)';ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(BL+10,TOPLINE);ctx.lineTo(BR-10,TOPLINE);ctx.stroke();ctx.setLineDash([]);
   if(state==='run'){
     // aim preview
