@@ -339,14 +339,20 @@ $('boardBack').addEventListener('click',()=>view('boardView',false));
 $('openProfile').addEventListener('click',()=>{view('profileView',true);$('nick2').value=profile?profile.nick:'';$('mail2').value=profile?profile.mail:'';$('onBoard').checked=!profile||!profile.skip});
 $('profBack').addEventListener('click',()=>view('profileView',false));
 $('prof').addEventListener('submit',async e=>{e.preventDefault();profile={nick:$('nick2').value.trim().slice(0,16),mail:$('mail2').value.trim().slice(0,120),skip:!$('onBoard').checked};
-  store.set('m2a-profile',JSON.stringify(profile));menuAs();view('profileView',false);rename()});
-async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;try{await submit(lastRun.score,lastRun.lv)}catch(e){}showBoard()}
+  store.set('m2a-profile',JSON.stringify(profile));menuAs();view('profileView',false);rename().then(syncBest)});
+async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;
+  try{await submit(lastRun.score,lastRun.lv);if(lastRun.score>=(+store.get('m2a-synced')||0))store.set('m2a-synced',String(lastRun.score))}catch(e){}showBoard()}
+// Safety net: make sure this phone's best score is on the top list (covers failed uploads,
+// and scores played before a name was entered). Runs on load and whenever the profile is saved.
+async function syncBest(){if(!online()||!profile||profile.skip||best<=0)return;if(best<=(+store.get('m2a-synced')||0))return;
+  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best))}catch(e){}}
+syncBest();
 $('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
-  if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun()});
+  if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun().then(syncBest)});
 $('skip').addEventListener('click',()=>{if(!profile||profile.skip){profile={nick:'',mail:'',skip:true};store.set('m2a-profile',JSON.stringify(profile))}$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me';menuAs()});
 $('change').addEventListener('click',()=>{$('change').textContent='change';showWho(true)});
 
-function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best))}catch(e){}}
+function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best));localStorage.setItem('m2a-bestlv',String(maxLv))}catch(e){}}
   $('final').textContent=score.toLocaleString('en');$('bestline').textContent=score>=best&&score>0?'New best!':'Best '+best.toLocaleString('en');
   $('over').hidden=false;lastRun={score,lv:maxLv,saved:false};$('change').textContent='change';
   if(!profile)showWho(false);else if(profile.skip){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}else showAs();
