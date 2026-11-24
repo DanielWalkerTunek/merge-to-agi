@@ -32,20 +32,28 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
 @keyframes agiT{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.08)}25%{transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){#agiText{animation:none}}
 .card.over{max-height:calc(100dvh - 32px);overflow:auto}
-#who{display:grid;gap:8px;margin:0 0 14px}#who[hidden],.as[hidden]{display:none}
-#who input{font:500 17px Fredoka,sans-serif;min-height:48px;border:2px solid #e8e3f5;border-radius:14px;padding:0 14px;color:var(--ink);background:#faf9fd;width:100%}
-#who input:focus{outline:none;border-color:var(--acc)}
+.who{display:grid;gap:8px;margin:0 0 14px}.who[hidden],.as[hidden]{display:none}
+form input:not([type=checkbox]){font:500 17px Fredoka,sans-serif;min-height:48px;border:2px solid #e8e3f5;border-radius:14px;padding:0 14px;color:var(--ink);background:#faf9fd;width:100%}
+form input:not([type=checkbox]):focus{outline:none;border-color:var(--acc)}
 .fine{margin:0;font-size:13px;font-weight:500;opacity:.5}
 button.link{background:none;color:var(--ink);min-height:40px;font-size:16px;opacity:.6}
 button.link.inline{display:inline;width:auto;min-height:0;padding:0;font-size:inherit;text-decoration:underline;opacity:.7}
 .as{margin:-8px 0 12px;font-weight:500;opacity:.75}
-#board{list-style:none;margin:0 0 16px;padding:0;text-align:left;font-weight:500;font-size:16px}
-#board li{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px}
-#board li:nth-child(odd){background:#f6f4fb}#board li.me{background:#fff3c4;font-weight:600}
-#board .rk{width:26px;opacity:.5;font-variant-numeric:tabular-nums}#board .dot{width:12px;height:12px;border-radius:50%;flex:none}
-#board .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#board .sc{font-variant-numeric:tabular-nums}
-#board .gap{background:none;justify-content:center;opacity:.4;padding:0}
-#board .msg{background:none;justify-content:center;opacity:.5;font-size:14px}
+ol.board{list-style:none;margin:0 0 16px;padding:0;text-align:left;font-weight:500;font-size:16px}
+ol.board li{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px}
+ol.board li:nth-child(odd){background:#f6f4fb}ol.board li.me{background:#fff3c4;font-weight:600}
+ol.board .rk{width:26px;opacity:.5;font-variant-numeric:tabular-nums}ol.board .dot{width:12px;height:12px;border-radius:50%;flex:none}
+ol.board .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}ol.board .sc{font-variant-numeric:tabular-nums}
+ol.board .gap{background:none;justify-content:center;opacity:.4;padding:0}
+ol.board .msg{background:none;justify-content:center;opacity:.5;font-size:14px}
+#pauseBtn{position:fixed;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));width:44px;height:44px;min-height:0;padding:0;border-radius:50%;background:#fff;color:var(--ink);display:grid;place-items:center;box-shadow:0 4px 14px rgba(59,47,74,.1);z-index:5}
+#pauseBtn[hidden]{display:none}
+h2{font-size:28px;margin:0 0 14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+button.soft{background:#f1edfa;color:var(--ink);min-height:50px;font-size:17px}
+.menuas{margin:14px 0 0;font-size:15px}.menuas:empty{display:none}
+.chk{display:flex;align-items:center;gap:10px;justify-content:center;font-weight:500;font-size:16px;margin:2px 0 4px;cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:var(--ink)}
 </style>
 </head>
 <body>
@@ -53,10 +61,38 @@ button.link.inline{display:inline;width:auto;min-height:0;padding:0;font-size:in
 <div id="score">0</div>
 <button id="mute" aria-label="Sound on"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="w1" d="M16.5 8.5a5 5 0 0 1 0 7"/><path id="w2" d="M19 6a8.5 8.5 0 0 1 0 12"/><path id="mx" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
 
+<button id="pauseBtn" aria-label="Pause" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
+
 <div class="ov" id="start"><div class="card">
   <h1>Merge to AGI</h1>
   <p class="sub">Squish two alike together</p>
   <button id="go">Play</button>
+  <div class="row2"><button class="soft" id="openBoard">Top list</button><button class="soft" id="openProfile">Profile</button></div>
+  <p class="as menuas" id="menuAs"></p>
+</div></div>
+
+<div class="ov" id="boardView" hidden><div class="card over">
+  <h2>Top list</h2>
+  <ol id="board2" class="board"></ol>
+  <button class="soft" id="boardBack">Back</button>
+</div></div>
+
+<div class="ov" id="profileView" hidden><div class="card">
+  <h2>Profile</h2>
+  <form id="prof" class="who" autocomplete="on">
+    <input id="nick2" maxlength="16" placeholder="Nickname" autocomplete="nickname">
+    <input id="mail2" type="email" maxlength="120" placeholder="Email (optional)" autocomplete="email">
+    <p class="fine">Your email is never shown. We only use it to contact winners.</p>
+    <label class="chk"><input type="checkbox" id="onBoard" checked> Show me on the top list</label>
+    <button type="submit">Save</button>
+    <button type="button" class="link" id="profBack">Back</button>
+  </form>
+</div></div>
+
+<div class="ov" id="pauseView" hidden><div class="card">
+  <h2>Paused</h2>
+  <button id="resume">Resume</button>
+  <div class="row2"><button class="soft" id="endGame">End game</button><button class="soft" id="restart">Restart</button></div>
 </div></div>
 
 <div id="agiText" hidden></div>
@@ -64,7 +100,7 @@ button.link.inline{display:inline;width:auto;min-height:0;padding:0;font-size:in
 <div class="ov" id="over" hidden><div class="card over">
   <p class="big" id="final">0</p>
   <p class="sub" id="bestline"></p>
-  <form id="who" hidden autocomplete="on">
+  <form id="who" class="who" hidden autocomplete="on">
     <input id="nick" name="nickname" maxlength="16" placeholder="Nickname" autocomplete="nickname" enterkeyhint="next">
     <input id="mail" name="email" type="email" maxlength="120" placeholder="Email (optional)" autocomplete="email" enterkeyhint="done">
     <p class="fine">Your email is never shown. We only use it to contact winners.</p>
@@ -72,8 +108,9 @@ button.link.inline{display:inline;width:auto;min-height:0;padding:0;font-size:in
     <button type="button" class="link" id="skip">Skip</button>
   </form>
   <p class="as" id="as" hidden><span id="asName"></span> · <button type="button" class="link inline" id="change">change</button></p>
-  <ol id="board"></ol>
+  <ol id="board" class="board"></ol>
   <button id="again">Play again</button>
+  <button class="link" id="toMenu">Menu</button>
 </div></div>
 
 <script>
@@ -250,7 +287,7 @@ function finishMerges(dt){
 
 function update(dt){
   for(const p of parts){p.t+=dt;p.vy+=500*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.98}parts=parts.filter(p=>p.t<.7);
-  if(state==='over')return;
+  if(state==='over'||state==='paused')return;
   if(state==='pause'){singM.t+=dt;for(const b of blobs)b.happy=.5;if(singM.t>1.5){state='run';singM=null}return}
   if(agiM){agiM.t+=dt;agiM.b.happy=.5;if(agiM.t>1.6||!blobs.includes(agiM.b))agiM=null}
   if(state==='run')playT+=dt;
@@ -276,26 +313,37 @@ const online=()=>!!(SB_URL&&SB_KEY);
 async function sb(path,opt={}){const r=await fetch(SB_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith('eyJ')?{Authorization:'Bearer '+SB_KEY}:{}),'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok)throw new Error(r.status);return r}
 function localBoard(){try{return JSON.parse(store.get('m2a-board')||'[]')}catch(e){return[]}}
 async function submit(sc,lv){const name=profile.nick||'Anonymous blob';
-  if(online()){await sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv})})}
+  if(online()){await sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv})});if(sc>0)store.set('m2a-scored','1')}
   else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i<0)b.push({player_id:pid,nickname:name,score:sc,best_model:lv});else{b[i].nickname=name;if(sc>b[i].score){b[i].score=sc;b[i].best_model=lv}}store.set('m2a-board',JSON.stringify(b))}}
 async function fetchBoard(){
-  if(online()){const top=await(await sb('leaderboard?select=player_id,nickname,score,best_model&order=score.desc&limit=10')).json();
+  if(online()){const top=await(await sb('leaderboard?select=player_id,nickname,score,best_model&score=gt.0&order=score.desc&limit=10')).json();
     let me=null;if(!top.some(r=>r.player_id===pid)){const m=await(await sb('leaderboard?select=player_id,nickname,score,best_model&player_id=eq.'+encodeURIComponent(pid))).json();
       if(m[0]){const c=await sb('leaderboard?select=player_id&score=gt.'+m[0].score,{method:'HEAD',headers:{Prefer:'count=exact'}});me={...m[0],rank:+(c.headers.get('content-range')||'*/0').split('/')[1]+1}}}
     return{top,me}}
-  const b=localBoard().sort((a,c)=>c.score-a.score);const i=b.findIndex(x=>x.player_id===pid);return{top:b.slice(0,10),me:i>=10?{...b[i],rank:i+1}:null}}
+  const b=localBoard().filter(x=>x.score>0).sort((a,c)=>c.score-a.score);const i=b.findIndex(x=>x.player_id===pid);return{top:b.slice(0,10),me:i>=10?{...b[i],rank:i+1}:null}}
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(r,rank){return`<li class="${r.player_id===pid?'me':''}"><span class="rk">${rank}</span><span class="dot" style="background:${COL[Math.max(0,Math.min(8,r.best_model|0))]}"></span><span class="nm">${esc(r.nickname)}</span><span class="sc">${(r.score|0).toLocaleString('en')}</span></li>`}
-async function showBoard(){const el=$('board');el.innerHTML='<li class="msg">Loading top list…</li>';
+async function showBoard(id='board'){const el=$(id);el.innerHTML='<li class="msg">Loading top list…</li>';
   try{const{top,me}=await fetchBoard();el.innerHTML=top.length?top.map((r,i)=>row(r,i+1)).join('')+(me?'<li class="gap">⋯</li>'+row(me,me.rank):''):'<li class="msg">No scores yet. Be the first!</li>'}
   catch(e){el.innerHTML='<li class="msg">Top list offline right now</li>'}}
 function showWho(edit){$('who').hidden=false;$('as').hidden=true;$('nick').value=profile?profile.nick:'';$('mail').value=profile?profile.mail:'';$('save').textContent=edit?'Save':'Add to top list';$('nick').focus()}
 function showAs(){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Saved as '+(profile.nick||'Anonymous blob')}
 let lastRun=null;
+// name change from the menu: online, add a 0-point row so the top list shows the new name
+async function rename(){if(!profile||profile.skip)return;if(online()){if(store.get('m2a-scored'))try{await submit(0,0)}catch(e){}}else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i>=0){b[i].nickname=profile.nick||'Anonymous blob';store.set('m2a-board',JSON.stringify(b))}}}
+function menuAs(){$('menuAs').textContent=!profile?'':profile.skip?'Not on the top list':'Playing as '+(profile.nick||'Anonymous blob')}
+menuAs();
+function view(id,on){$(id).hidden=!on;$('start').hidden=on||state!=='menu'}
+$('openBoard').addEventListener('click',()=>{view('boardView',true);showBoard('board2')});
+$('boardBack').addEventListener('click',()=>view('boardView',false));
+$('openProfile').addEventListener('click',()=>{view('profileView',true);$('nick2').value=profile?profile.nick:'';$('mail2').value=profile?profile.mail:'';$('onBoard').checked=!profile||!profile.skip});
+$('profBack').addEventListener('click',()=>view('profileView',false));
+$('prof').addEventListener('submit',async e=>{e.preventDefault();profile={nick:$('nick2').value.trim().slice(0,16),mail:$('mail2').value.trim().slice(0,120),skip:!$('onBoard').checked};
+  store.set('m2a-profile',JSON.stringify(profile));menuAs();view('profileView',false);rename()});
 async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;try{await submit(lastRun.score,lastRun.lv)}catch(e){}showBoard()}
-$('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false};store.set('m2a-profile',JSON.stringify(profile));showAs();
+$('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
   if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun()});
-$('skip').addEventListener('click',()=>{if(!profile||profile.skip){profile={nick:'',mail:'',skip:true};store.set('m2a-profile',JSON.stringify(profile))}$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'});
+$('skip').addEventListener('click',()=>{if(!profile||profile.skip){profile={nick:'',mail:'',skip:true};store.set('m2a-profile',JSON.stringify(profile))}$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me';menuAs()});
 $('change').addEventListener('click',()=>{$('change').textContent='change';showWho(true)});
 
 function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best))}catch(e){}}
@@ -458,8 +506,8 @@ function draw(){
   if(singM&&singM.t<.6){ctx.save();ctx.globalAlpha=.9*(1-singM.t/.6);ctx.fillStyle='#fff';ctx.fillRect(-OX/SC,-OY/SC,SW/SC,SH/SC);ctx.restore()}
 }
 
-let last=performance.now();
-function loop(now){const dt=Math.min(1/20,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}
+let last=performance.now(),pbShown=false;
+function loop(now){const pb=state==='run';if(pb!==pbShown){pbShown=pb;$('pauseBtn').hidden=!pb}const dt=Math.min(1/20,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}
 reset();
 function buildDemo(){blobs=[];let x=BL,y=FLOOR,row=0;for(const lv of[5,2,4,0,3,1,6,7,2,0,1,3,4,8]){const r=R[lv];if(x+2*r>BR){x=BL;y-=row*2+6;row=0}if(y-2*r<TOPLINE+20)break;blobs.push(makeBlob(lv,x+r,y-r,0,0,1));x+=2*r+4;row=Math.max(row,r)}}
 buildDemo();
@@ -467,6 +515,15 @@ addEventListener('resize',()=>{screen();if(state==='menu'){layout();buildDemo()}
 requestAnimationFrame(loop);
 
 /* ================= input: drag to aim, release to shoot ================= */
+function pause(){if(state!=='run')return;state='paused';charging=false;down=false;$('pauseView').hidden=false}
+function resume(){if(state!=='paused')return;$('pauseView').hidden=true;state='run';last=performance.now()}
+$('pauseBtn').addEventListener('click',()=>{audio();pause()});
+$('resume').addEventListener('click',resume);
+$('endGame').addEventListener('click',()=>{$('pauseView').hidden=true;state='run';gameOver()});
+$('restart').addEventListener('click',()=>{$('pauseView').hidden=true;start()});
+$('toMenu').addEventListener('click',()=>{$('over').hidden=true;state='menu';buildDemo();$('start').hidden=false;menuAs()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)pause()});
 function start(){audio();try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{})}catch(e){}
   reset();state='run';$('start').hidden=true;$('over').hidden=true}
 $('go').addEventListener('click',start);$('again').addEventListener('click',start);
@@ -476,6 +533,8 @@ cv.addEventListener('pointermove',e=>{if(down||e.pointerType==='mouse')setAim(to
 cv.addEventListener('pointerup',e=>{if(down){setAim(toWX(e.clientX),toWY(e.clientY));release()}down=false});
 cv.addEventListener('pointercancel',()=>{down=false;charging=false});
 addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;const c=e.code;
+  if(c==='Escape'||c==='KeyP'){if(state==='run')pause();else if(state==='paused')resume();return}
+  if(!$('boardView').hidden||!$('profileView').hidden||state==='paused')return;
   if(c==='ArrowLeft'||c==='KeyA'){e.preventDefault();aimA=Math.max(-AMAX,aimA-.06)}
   else if(c==='ArrowRight'||c==='KeyD'){e.preventDefault();aimA=Math.min(AMAX,aimA+.06)}
   else if(c==='KeyS'||c==='KeyQ'){e.preventDefault();const p=nextPos();trySwap(p.nx,p.ny)}
