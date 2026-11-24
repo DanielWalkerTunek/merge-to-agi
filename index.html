@@ -123,10 +123,10 @@ const PTS=[0,4,10,25,60,140,320,700,1500],INK='#3b2f4a';
 /* The physics world is laid out once (W,H = world size). If the screen changes size mid-game
    (fullscreen exit with Esc, address bar, rotating, switching tabs) we only rescale the drawing,
    so the jar never moves or shrinks under the blobs. */
-let W,H,CW,BL,BR,FLOOR,TOP,LX,LY,TOPLINE,R=[],SW=0,SH=0,DPR=1,SC=1,OX=0,OY=0;
+let BASE=[],SIZE=1,W,H,CW,BL,BR,FLOOR,TOP,LX,LY,TOPLINE,R=[],SW=0,SH=0,DPR=1,SC=1,OX=0,OY=0;
 function layout(){W=SW;H=SH;SC=1;OX=OY=0;
   CW=Math.min(W-28,H*.6);BL=(W-CW)/2;BR=BL+CW;FLOOR=H-Math.max(20,H*.03);
-  R=COL.map((_,i)=>CW*.05225*Math.pow(1.245,i));LY=Math.max(90,H*.11)+R[3];TOP=LY+R[3]+10;TOPLINE=TOP+8;LX=(BL+BR)/2}
+  BASE=COL.map((_,i)=>CW*.05225*Math.pow(1.245,i));R=BASE.map(r=>r*SIZE);LY=Math.max(90,H*.11)+R[3];TOP=LY+R[3]+10;TOPLINE=TOP+8;LX=(BL+BR)/2}
 function fit(){SC=Math.min(SW/W,SH/H);OX=(SW-W*SC)/2;OY=(SH-H*SC)/2}
 function screen(){DPR=Math.min(2,window.devicePixelRatio||1);SW=innerWidth;SH=innerHeight;cv.width=SW*DPR;cv.height=SH*DPR}
 screen();layout();
@@ -262,13 +262,16 @@ const speed=()=>VMIN+power*(VMAX-VMIN);
 function startCharge(){if(state!=='run'||cool>0)return;charging=true;chargeT=0;power=0}
 function release(){if(!charging)return;charging=false;shoot()}
 const pick=()=>{const r=Math.random();return r<.35?0:r<.65?1:r<.87?2:3};
-function reset(){maxLv=0;playT=0;swapUsed=false;swapT=0;hbT=0;agiDone=false;llmDone=false;agiM=null;singM=null;$('agiText').hidden=true;blobs=[];score=0;cur=pick();nxt=pick();aimA=0;aimPX=LX;aimPY=H;cool=0;danger=0;parts=[];setScore()}
+function reset(){maxLv=0;SIZE=1;R=BASE.map(r=>r*SIZE);playT=0;swapUsed=false;swapT=0;hbT=0;agiDone=false;llmDone=false;agiM=null;singM=null;$('agiText').hidden=true;blobs=[];score=0;cur=pick();nxt=pick();aimA=0;aimPX=LX;aimPY=H;cool=0;danger=0;parts=[];setScore()}
 function setScore(){$('score').textContent=score.toLocaleString('en')}
 function nextPos(){return{nx:BR-R[0]-4,ny:LY-R[3]*.3,nr:R[0]*.8}}
 function trySwap(x,y){if(state!=='run'||charging)return false;const{nx,ny,nr}=nextPos();if(Math.hypot(x-nx,y-ny)>Math.max(28,nr+14))return false;
   if(!swapUsed){[cur,nxt]=[nxt,cur];swapUsed=true;swapT=.25;sfx.swap();buzz(8)}return true}
 function shoot(){if(state!=='run'||cool>0)return;const v=speed();blobs.push(makeBlob(cur,LX,LY,Math.sin(aimA)*v,Math.cos(aimA)*v,1));cur=nxt;nxt=pick();cool=.42;swapUsed=false;sfx.shoot()}
 function setAim(x,y){aimPX=x;aimPY=y;const dx=x-LX,dy=Math.max(24,y-LY);aimA=Math.max(-AMAX,Math.min(AMAX,Math.atan2(dx,dy)))}
+// After each Singularity every model gets 10% bigger (existing blobs swell smoothly), so the jar fills faster
+const GROW=1.1;
+function growAll(){SIZE*=GROW;R=BASE.map(r=>r*SIZE);for(const b of blobs){b.s/=GROW;b.r=R[b.lv];b.m=b.r*b.r/b.n}}
 function burst(x,y,c,n,sp){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.4+Math.random()*.8);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,c,r:2+Math.random()*3})}}
 
 function finishMerges(dt){
@@ -278,10 +281,11 @@ function finishMerges(dt){
     const mx=(b.cx+o.cx)/2,my=(b.cy+o.cy)/2,vx=((b.xs[0]-b.pxs[0])+(o.xs[0]-o.pxs[0]))/2/STEP,vy=((b.ys[0]-b.pys[0])+(o.ys[0]-o.pys[0]))/2/STEP,lv=b.lv+1;
     burst(mx,my,COL[b.lv],12+b.lv*2,120+b.lv*20);if(b.lv+1>maxLv)maxLv=b.lv+1;{const gain=.25*(b.lv+1);if(danger>.6&&gain>=1){for(const q of blobs)q.happy=Math.max(q.happy,.9);sfx.phew()}danger=Math.max(0,danger-gain)}
     if(lv>=COL.length){sfx.sing();score+=5000;for(let k=0;k<2;k++){burst(mx,my,'#ffd86b',60,340);burst(mx,my,'#cfb3ff',40,280);burst(mx,my,'#ff9ea8',30,240)}
-      if(state==='run'){singM={x:mx,y:my,t:0};state='pause';agiM=null;moment('Singularity','#9b5cf6')}continue}
+      if(state==='run'){singM={x:mx,y:my,t:0};state='pause';agiM=null;moment('Singularity','#9b5cf6');growAll()}continue}
     score+=PTS[lv];const nb=makeBlob(lv,mx,my,0,0,.78);nb.happy=.9;nb.age=.06;add.push(nb);sfx.merge(lv);
     if(lv===7&&!llmDone&&state==='run'){llmDone=true;moment('Reached LLM','#e8566a')}
     if(lv===8&&!agiDone&&state==='run'){agiDone=true;agiM={b:nb,t:0};sfx.agi();moment('Reached AGI','#e0a100')}}
+  for(const b of add)if(b.r!==R[b.lv]){b.s*=b.r/R[b.lv];b.r=R[b.lv];b.m=b.r*b.r/b.n}
   if(gone.size){blobs=blobs.filter(b=>!gone.has(b)).concat(add);setScore()}
 }
 
