@@ -454,6 +454,7 @@ function sparkle(x,y,s,c){ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y-s);ctx.
    2 Perceptron: sleepy, droopy lids      3 MLP: nerd with round glasses + buck teeth
    4 CNN: curious big eyes that watch your finger   5 RNN: silly, tongue out, loop antenna, winks
    6 Transformer: cool shades + smirk     7 LLM: never stops talking   8 AGI: zen, halo, sparkles */
+const rare=c=>{const x=Math.sin(c*12.9898)*43758.5453;return x-Math.floor(x)}; // stable pseudo-random per bubble
 const LLM_WORDS=['hi!','hmm','ok','lol','42','why?','yes!','tea?','AGI?','brb','wow','uwu'];
 function face(cx,cy,rr,lv,st){
   const t=performance.now()/1000,fs=9+rr*.5,sp=fs*.4,ey=cy-fs*.06,sh=SHADE[lv];
@@ -517,7 +518,7 @@ function face(cx,cy,rr,lv,st){
   else if(lv===5){ctx.beginPath();ctx.arc(mx,my-mw*.4,mw,Math.PI*.1,Math.PI*.9);ctx.stroke();ctx.fillStyle='#e8607d';ctx.beginPath();ctx.arc(mx+mw*.25,my+mw*.5,mw*.4,0,Math.PI);ctx.lineTo(mx-mw*.15,my+mw*.5);ctx.fill()}
   else if(lv===6){ctx.beginPath();ctx.arc(mx,my-mw*.35,mw*.9,Math.PI*.18,Math.PI*.82);ctx.stroke()}
   else if(lv===7){const o=.25+.75*Math.abs(Math.sin(t*9+id*2));ell(mx,my+mw*.2,mw*.8,mw*.75*o+.6);ctx.fill();
-    const word=idle>2?LLM_WORDS[Math.floor(t/1.6+id)%LLM_WORDS.length]:null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
+    const wc=Math.floor(t/1.6+id),word=idle>2?(rare(wc)<.06?'huss huss huss':LLM_WORDS[wc%LLM_WORDS.length]):null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
     const bw=word?Math.max(rr*.42,ctx.measureText(word).width+bh*.8):rr*.42,bx=cx+rr*.62+bw/2*.8,by=cy-rr*.82;ctx.fillStyle='#fff';rrect(bx-bw/2,by-bh/2,bw,bh,bh/2);ctx.fill();ctx.beginPath();ctx.moveTo(bx-bw/2+bh*.5,by+bh*.4);ctx.lineTo(bx-bw/2+bh*.2,by+bh*.85);ctx.lineTo(bx-bw/2+bh*.95,by+bh*.45);ctx.fill();
     ctx.fillStyle=INK;if(word){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(word,bx,by+fz*.05)}else{for(let k=0;k<3;k++){const on=Math.floor(t*3+id)%4>k;ctx.globalAlpha=on?1:.25;circle(bx+(k-1)*bw*.24,by,bh*.12);ctx.fill()}ctx.globalAlpha=1}}
   else{ctx.beginPath();ctx.moveTo(mx-mw*1.1,my);ctx.quadraticCurveTo(mx-mw*.55,my+mw,mx,my);ctx.quadraticCurveTo(mx+mw*.55,my+mw,mx+mw*1.1,my);ctx.stroke()}
