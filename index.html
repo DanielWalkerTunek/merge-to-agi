@@ -251,8 +251,8 @@ function buzz(p){if(muted)return;try{navigator.vibrate&&navigator.vibrate(p)}cat
 let lastMergeSfx=0;
 const sfx={
   shoot(){tone(240,560,.13,'sine',.22);tone(560,420,.07,'triangle',.05,.06)},
-  merge(lv){const now=performance.now();if(now-lastMergeSfx<40)return;lastMergeSfx=now;
-    const f=330*Math.pow(2,[0,2,4,7,9,12,14,16,19][Math.min(lv,8)]/12); // pentatonic: chains sound musical
+  merge(lv,c=1){const now=performance.now();if(now-lastMergeSfx<40)return;lastMergeSfx=now;
+    const f=330*Math.pow(2,[0,2,4,7,9,12,14,16,19,21,24,26,28][Math.min(lv+c-1,12)]/12); // pentatonic, a step higher per combo
     hiss(.035,4000,.05);                       // soft pop click
     tone(f*2.4,f,.09,'sine',.28);              // bubbly "bloop" drop
     tone(f,f,.32,'sine',.12,.05);              // warm body
@@ -276,7 +276,7 @@ const speed=()=>VMIN+power*(VMAX-VMIN);
 function startCharge(){if(state!=='run'||cool>0)return;charging=true;chargeT=0;power=0}
 function release(){if(!charging)return;charging=false;shoot()}
 const pick=()=>{const r=Math.random();return r<.35?0:r<.65?1:r<.87?2:3};
-function reset(){maxLv=0;SIZE=1;R=BASE.map(r=>r*SIZE);playT=0;swapUsed=false;swapT=0;hbT=0;agiDone=false;llmDone=false;agiM=null;singM=null;$('agiText').hidden=true;blobs=[];score=0;cur=pick();nxt=pick();aimA=0;aimPX=LX;aimPY=H;cool=0;danger=0;parts=[];setScore()}
+function reset(){maxLv=0;comboN=0;lastMergeT=-9;cpops=[];tut=store.get('m2a-tut')?null:{t:0};SIZE=1;R=BASE.map(r=>r*SIZE);playT=0;swapUsed=false;swapT=0;hbT=0;agiDone=false;llmDone=false;agiM=null;singM=null;$('agiText').hidden=true;blobs=[];score=0;cur=pick();nxt=pick();aimA=0;aimPX=LX;aimPY=H;cool=0;danger=0;parts=[];setScore()}
 function setScore(){$('score').textContent=score.toLocaleString('en')}
 function nextPos(){return{nx:BR-R[0]-4,ny:LY-R[3]*.3,nr:R[0]*.8}}
 function trySwap(x,y){if(state!=='run'||charging)return false;const{nx,ny,nr}=nextPos();if(Math.hypot(x-nx,y-ny)>Math.max(28,nr+14))return false;
@@ -286,6 +286,7 @@ function setAim(x,y){aimPX=x;aimPY=y;const dx=x-LX,dy=Math.max(24,y-LY);aimA=Mat
 // After each Singularity every model gets 4% bigger (existing blobs swell smoothly), so the jar fills faster
 const GROW=1.04;
 function growAll(){SIZE*=GROW;R=BASE.map(r=>r*SIZE);for(const b of blobs){b.s/=GROW;b.r=R[b.lv];b.m=b.r*b.r/b.n}}
+const COMBO_GAP=1.2;let comboN=0,lastMergeT=-9,cpops=[];
 function burst(x,y,c,n,sp){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.4+Math.random()*.8);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,c,r:2+Math.random()*3})}}
 
 function finishMerges(dt){
@@ -296,7 +297,10 @@ function finishMerges(dt){
     burst(mx,my,COL[b.lv],12+b.lv*2,120+b.lv*20);if(b.lv+1>maxLv)maxLv=Math.min(8,b.lv+1);{const gain=.25*(b.lv+1);if(danger>.6&&gain>=1){for(const q of blobs)q.happy=Math.max(q.happy,.9);sfx.phew()}danger=Math.max(0,danger-gain)}
     if(lv>=COL.length){sfx.sing();score+=5000;for(let k=0;k<2;k++){burst(mx,my,'#ffd86b',60,340);burst(mx,my,'#cfb3ff',40,280);burst(mx,my,'#ff9ea8',30,240)}
       if(state==='run'){singM={x:mx,y:my,t:0};state='pause';agiM=null;growAll();moment('Singularity','#9b5cf6',`Models are now ${Math.round((SIZE-1)*100)}% bigger`)}continue}
-    score+=PTS[lv];const nb=makeBlob(lv,mx,my,0,0,.78);nb.happy=.9;nb.age=.06;add.push(nb);sfx.merge(lv);
+    // chain combo: merges less than 1.2 s apart multiply the points (up to x4)
+    if(playT-lastMergeT<COMBO_GAP)comboN++;else comboN=1;lastMergeT=playT;const cm=Math.min(4,comboN);
+    score+=PTS[lv]*cm;if(cm>1){cpops.push({x:mx,y:my-R[lv]*.6,t:0,s:'×'+cm,c:COL[lv]});burst(mx,my,'#ffd86b',10*cm,160+40*cm)}
+    const nb=makeBlob(lv,mx,my,0,0,.78);nb.happy=.9;nb.age=.06;add.push(nb);sfx.merge(lv,cm);
     if(lv===7&&!llmDone&&state==='run'){llmDone=true;moment('Reached LLM','#e8566a')}
     if(lv===8&&!agiDone&&state==='run'){agiDone=true;agiM={b:nb,t:0};sfx.agi();moment('Reached AGI','#e0a100')}}
   for(const b of add)if(b.r!==R[b.lv]){b.s*=b.r/R[b.lv];b.r=R[b.lv];b.m=b.r*b.r/b.n}
@@ -310,6 +314,7 @@ function update(dt){
   if(agiM){agiM.t+=dt;agiM.b.happy=.5;if(agiM.t>1.6||!blobs.includes(agiM.b))agiM=null}
   if(state==='run')playT+=dt;
   swapT=Math.max(0,swapT-dt);
+  for(const q of cpops)q.t+=dt;cpops=cpops.filter(q=>q.t<.9);if(tut&&state==='run'){tut.t+=dt;if(tut.t>TUT_LEN*3)endTut()}
   if(charging){chargeT+=dt;const prev=power;power=.5-.5*Math.cos(chargeT*TAU/CYCLE);if(prev<.985&&power>=.985)buzz(8);if(state!=='run')charging=false}
   cool=Math.max(0,cool-dt);
   acc+=dt;let k=0;while(acc>=STEP&&k<12){step();acc-=STEP;k++}if(k===12)acc=0;
@@ -331,8 +336,10 @@ if(profile&&profile.skip&&!profile.optOut)profile=null;
 const online=()=>!!(SB_URL&&SB_KEY);
 async function sb(path,opt={}){const r=await fetch(SB_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith('eyJ')?{Authorization:'Bearer '+SB_KEY}:{}),'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok){let t='';try{t=(await r.text()).slice(0,160)}catch(e){}throw new Error(r.status+' '+t)}return r}
 function localBoard(){try{return JSON.parse(store.get('m2a-board')||'[]')}catch(e){return[]}}
-async function submit(sc,lv){const name=profile.nick||'Anonymous blob';lv=Math.max(0,Math.min(8,lv|0)); // a Singularity counts as AGI (database allows 0-8)
-  if(online()){await sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv})});if(sc>0)store.set('m2a-scored','1')}
+async function submit(sc,lv,dur){const name=profile.nick||'Anonymous blob';dur=Number.isFinite(dur)?Math.max(0,Math.round(dur)):null;lv=Math.max(0,Math.min(8,lv|0)); // a Singularity counts as AGI (database allows 0-8)
+  if(online()){await sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv,duration_s:dur})}).catch(async e=>{
+    // database not migrated yet (no duration_s column): send without it
+    if(/duration_s/.test(e.message))return sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv})});throw e});if(sc>0)store.set('m2a-scored','1')}
   else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i<0)b.push({player_id:pid,nickname:name,score:sc,best_model:lv});else{b[i].nickname=name;if(sc>b[i].score){b[i].score=sc;b[i].best_model=lv}}store.set('m2a-board',JSON.stringify(b))}}
 async function fetchBoard(){
   if(online()){const top=await(await sb('leaderboard?select=player_id,nickname,score,best_model&score=gt.0&order=score.desc&limit=10')).json();
@@ -352,7 +359,7 @@ function showAs(){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidde
 function showNotSaved(){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Not saved';$('change').textContent='save it'}
 let lastRun=null;
 // name change from the menu: online, add a 0-point row so the top list shows the new name
-async function rename(){if(!profile||profile.skip)return;if(online()){if(store.get('m2a-scored'))try{await submit(0,0)}catch(e){}}else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i>=0){b[i].nickname=profile.nick||'Anonymous blob';store.set('m2a-board',JSON.stringify(b))}}}
+async function rename(){if(!profile||profile.skip)return;if(online()){if(store.get('m2a-scored'))try{await submit(0,0,0)}catch(e){}}else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i>=0){b[i].nickname=profile.nick||'Anonymous blob';store.set('m2a-board',JSON.stringify(b))}}}
 function menuAs(){const el=$('menuAs'),synced=+store.get('m2a-synced')||0;
   if(!profile&&best>synced){el.innerHTML=`Your best ${best.toLocaleString('en')} isn't saved · <button type="button" class="link inline" id="saveBest">save it</button>`;$('saveBest').addEventListener('click',()=>$('openProfile').click())}
   else if(profile&&!profile.skip&&best>synced&&online()){el.innerHTML=`Your best ${best.toLocaleString('en')} isn't on the top list · <button type="button" class="link inline" id="upBest">upload it</button>`;
@@ -367,29 +374,51 @@ $('profBack').addEventListener('click',()=>view('profileView',false));
 $('prof').addEventListener('submit',async e=>{e.preventDefault();const off=!$('onBoard').checked;profile={nick:$('nick2').value.trim().slice(0,16),mail:$('mail2').value.trim().slice(0,120),skip:off,optOut:off};
   store.set('m2a-profile',JSON.stringify(profile));view('profileView',false);rename().then(syncBest).then(menuAs);menuAs()});
 async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;
-  try{await submit(lastRun.score,lastRun.lv);if(lastRun.score>=(+store.get('m2a-synced')||0))store.set('m2a-synced',String(lastRun.score))}
+  try{await submit(lastRun.score,lastRun.lv,lastRun.dur);if(lastRun.score>=(+store.get('m2a-synced')||0))store.set('m2a-synced',String(lastRun.score))}
   catch(e){lastRun.saved=false;console.warn('save failed',e);if(!$('as').hidden){$('asName').textContent="Couldn't save ("+String(e.message||'network').slice(0,40)+')';$('change').textContent='try again'}}showBoard()}
 // Safety net: make sure this phone's best score is on the top list (covers failed uploads,
 // and scores played before a name was entered). Runs on load and whenever the profile is saved.
 async function syncBest(manual){if(!online()||!profile||profile.skip||best<=0)return;if(best<=(+store.get('m2a-synced')||0))return;
-  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best));if(!manual)menuAs();return null}catch(e){if(!manual)menuAs();return e.message||'network error'}}
+  try{await submit(best,+store.get('m2a-bestlv')||0,store.get('m2a-bestdur')!==null?+store.get('m2a-bestdur'):NaN);store.set('m2a-synced',String(best));if(!manual)menuAs();return null}catch(e){if(!manual)menuAs();return e.message||'network error'}}
 syncBest();
 $('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false,optOut:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
-  if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun().then(syncBest)});
+  if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv,lastRun.dur).then(showBoard,showBoard)}else saveRun().then(syncBest)});
 // "Don't save" only applies to this game (the score stays on the phone and can be saved later)
 $('skip').addEventListener('click',()=>{if(profile&&!profile.skip)showAs();else showNotSaved();menuAs()});
 $('change').addEventListener('click',()=>{if($('change').textContent==='try again'){$('asName').textContent='Saving…';$('change').textContent='change';saveRun().then(()=>{if(lastRun&&lastRun.saved)showAs()});return}showWho(!!(profile&&!profile.skip))});
 
-function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best));localStorage.setItem('m2a-bestlv',String(maxLv))}catch(e){}}
+function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best));localStorage.setItem('m2a-bestlv',String(maxLv));localStorage.setItem('m2a-bestdur',String(Math.round(playT)))}catch(e){}}
   $('final').textContent=score.toLocaleString('en');$('bestline').textContent=score>=best&&score>0?'New best!':'Best '+best.toLocaleString('en');
   // ignore taps for a moment: fingers are often still tapping the jar when the game ends
   const ov=$('over');ov.classList.add('lock');ov.hidden=false;setTimeout(()=>ov.classList.remove('lock'),900);
-  lastRun={score,lv:maxLv,saved:false};
+  lastRun={score,lv:maxLv,dur:playT,saved:false};
   if(profile&&profile.skip){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}
   else if(!profile&&score>0)showWho(false); // must choose: Save score or Don't save, before Play again appears
   else if(!profile)showNotSaved();else showAs();
   if(score>0&&profile&&!profile.skip)saveRun().then(()=>syncBest());else syncBest().then(()=>showBoard());menuAs()}
 
+const TUT_LEN=3.4;let tut=null;
+function endTut(){if(tut){tut=null;store.set('m2a-tut','1')}}
+function drawTut(){
+  const T=tut.t%TUT_LEN,ease=x=>x<0?0:x>1?1:x*x*(3-2*x),jh=FLOOR-TOPLINE,
+    p0={x:LX-CW*.05,y:TOPLINE+jh*.28},p1={x:LX+CW*.26,y:TOPLINE+jh*.5},
+    k=ease((T-.5)/.8),fx=p0.x+(p1.x-p0.x)*k,fy=p0.y+(p1.y-p0.y)*k,
+    on=T>.2&&T<2.45,fade=Math.min(1,(T-.05)/.2)*(T>2.45?Math.max(0,1-(T-2.45)/.3):1),
+    pow=Math.max(0,Math.min(1,(T-.5)/1.8)),pw=.5-.5*Math.cos(pow*Math.PI*.85),a=Math.atan2(fx-LX,Math.max(24,fy-LY)),RR=R[cur]+9;
+  ctx.save();
+  if(on){ // aim dots + power ring, like the real thing
+    ctx.globalAlpha=.55*fade;for(let i=1;i<=12;i++){const d=RR+6+i*17;ctx.fillStyle='rgba(59,47,74,.5)';circle(LX+Math.sin(a)*d,LY+Math.cos(a)*d,2.4);ctx.fill()}
+    ctx.lineCap='round';ctx.lineWidth=5;ctx.strokeStyle=`hsl(${260-50*pw} 70% ${80-12*pw}%)`;ctx.beginPath();ctx.arc(LX,LY,RR+5,-Math.PI/2,-Math.PI/2+Math.max(.03,pw)*TAU);ctx.stroke()}
+  if(T>2.45&&T<3.3){ // ghost blob flying off
+    const tt=T-2.45,v=VMIN+pw*(VMAX-VMIN),gx=LX+Math.sin(a)*v*tt,gy=LY+Math.cos(a)*v*tt+.5*G*tt*tt;
+    ctx.globalAlpha=.35*Math.max(0,1-tt/.85);ctx.fillStyle=COL[cur];circle(gx,gy,R[cur]);ctx.fill()}
+  // finger
+  const press=T>.25&&T<2.45?1:0,r=17*(press?.85:1);
+  ctx.globalAlpha=.9*fade;ctx.fillStyle='rgba(59,47,74,.18)';circle(fx+3,fy+5,r);ctx.fill();
+  ctx.fillStyle='#fff';circle(fx,fy,r);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=INK;ctx.globalAlpha=.55*fade;ctx.stroke();
+  if(press){ctx.globalAlpha=.35*fade;ctx.lineWidth=2;circle(fx,fy,r+6+Math.sin(T*8)*2);ctx.stroke()}
+  if(T>2.45&&T<2.9){const q=(T-2.45)/.45;ctx.globalAlpha=(1-q)*.6;ctx.lineWidth=3;circle(p1.x,p1.y,r+q*30);ctx.stroke()}
+  ctx.restore()}
 function moment(txt,col,sub){const e=$('agiText');e.textContent=txt;if(sub){const m=document.createElement('small');m.textContent=sub;e.appendChild(m)}e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
 
 /* ================= drawing ================= */
@@ -523,7 +552,7 @@ function draw(){
   if(state==='run'){
     // aim preview
     const r=R[cur],pc=`hsl(${(260-50*power)} 70% ${80-12*power}%)`;
-    if(cool<=0||charging){for(let k=1;k<=16;k++){const d=R[cur]+14+k*17;ctx.fillStyle=`rgba(59,47,74,${.34-k*.018})`;circle(LX+Math.sin(aimA)*d,LY+Math.cos(aimA)*d,2.7-k*.09);ctx.fill()}}
+    if((cool<=0||charging)&&!(tut&&!charging)){for(let k=1;k<=16;k++){const d=R[cur]+14+k*17;ctx.fillStyle=`rgba(59,47,74,${.34-k*.018})`;circle(LX+Math.sin(aimA)*d,LY+Math.cos(aimA)*d,2.7-k*.09);ctx.fill()}}
     // launcher ring + power meter
     const RR=R[cur]+9;ctx.fillStyle='#e8e3f5';circle(LX,LY,RR);ctx.fill();
     ctx.lineCap='round';ctx.strokeStyle='#d6cfea';ctx.lineWidth=4;ctx.beginPath();ctx.arc(LX,LY,RR,Math.PI/2-aimA-.35,Math.PI/2-aimA+.35);ctx.stroke();
@@ -551,6 +580,9 @@ function draw(){
     drawBlob(b.xs,b.ys,b.n,b.lv,b.cx,b.cy,rr,{lx,ly,id:b.id,squish:!ag&&b.A/b.A0<.84,happy:b.happy>0,blink:!ag&&b.blink<0,worry:WOR})}
   if(ag){const rr=ag.r*ag.s;drawBlob(ag.xs,ag.ys,ag.n,8,ag.cx,ag.cy,rr,{lx:0,ly:0,id:ag.id,happy:true})}
   for(const p of parts){ctx.globalAlpha=1-p.t/.7;ctx.fillStyle=p.c;circle(p.x,p.y,p.r*(1-p.t/.9));ctx.fill()}ctx.globalAlpha=1;
+  for(const q of cpops){const k=q.t/.9,sc=q.t<.12?q.t/.12*1.25:1.25-.25*Math.min(1,(q.t-.12)/.15);ctx.save();ctx.globalAlpha=1-Math.max(0,(k-.6)/.4);ctx.translate(q.x,q.y-q.t*40);ctx.scale(sc,sc);
+    ctx.font=`600 ${Math.max(22,CW*.075)}px Fredoka,system-ui,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=6;ctx.strokeStyle='#fff';ctx.strokeText(q.s,0,0);ctx.fillStyle=INK;ctx.fillText(q.s,0,0);ctx.restore()}
+  if(tut&&state==='run')drawTut();
   if(singM&&singM.t<.6){ctx.save();ctx.globalAlpha=.9*(1-singM.t/.6);ctx.fillStyle='#fff';ctx.fillRect(-OX/SC,-OY/SC,SW/SC,SH/SC);ctx.restore()}
 }
 
@@ -576,7 +608,7 @@ function start(){audio();try{const d=document.documentElement;if(!document.fulls
   reset();state='run';$('start').hidden=true;$('over').hidden=true}
 $('go').addEventListener('click',start);$('again').addEventListener('click',start);
 let down=false;
-cv.addEventListener('pointerdown',e=>{audio();if(trySwap(toWX(e.clientX),toWY(e.clientY)))return;down=true;setAim(toWX(e.clientX),toWY(e.clientY));startCharge()});
+cv.addEventListener('pointerdown',e=>{audio();if(state==='run')endTut();if(trySwap(toWX(e.clientX),toWY(e.clientY)))return;down=true;setAim(toWX(e.clientX),toWY(e.clientY));startCharge()});
 cv.addEventListener('pointermove',e=>{if(down||e.pointerType==='mouse')setAim(toWX(e.clientX),toWY(e.clientY))});
 cv.addEventListener('pointerup',e=>{if(down){setAim(toWX(e.clientX),toWY(e.clientY));release()}down=false});
 cv.addEventListener('pointercancel',()=>{down=false;charging=false});
@@ -586,7 +618,7 @@ addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;co
   if(c==='ArrowLeft'||c==='KeyA'){e.preventDefault();aimA=Math.max(-AMAX,aimA-.06)}
   else if(c==='ArrowRight'||c==='KeyD'){e.preventDefault();aimA=Math.min(AMAX,aimA+.06)}
   else if(c==='KeyS'||c==='KeyQ'){e.preventDefault();const p=nextPos();trySwap(p.nx,p.ny)}
-  else if(c==='Space'||c==='ArrowDown'){e.preventDefault();if(e.repeat)return;if(state==='run')startCharge();else if(state!=='pause')start()}});
+  else if(c==='Space'||c==='ArrowDown'){e.preventDefault();if(e.repeat)return;if(state==='run'){endTut();startCharge()}else if(state!=='pause')start()}});
 addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='ArrowDown')release()});
 }
 </script>
