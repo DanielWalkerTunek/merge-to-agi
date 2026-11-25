@@ -455,6 +455,7 @@ function sparkle(x,y,s,c){ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y-s);ctx.
    4 CNN: curious big eyes that watch your finger   5 RNN: silly, tongue out, loop antenna, winks
    6 Transformer: cool shades + smirk     7 LLM: never stops talking   8 AGI: zen, halo, sparkles */
 const rare=c=>{const x=Math.sin(c*12.9898)*43758.5453;return x-Math.floor(x)}; // stable pseudo-random per bubble
+const LLM_EVERY=30; // seconds between real words; otherwise the bubble shows typing dots
 const LLM_WORDS=['hi!','hmm','ok','lol','42','why?','yes!','tea?','AGI?','brb','wow','uwu'];
 function face(cx,cy,rr,lv,st){
   const t=performance.now()/1000,fs=9+rr*.5,sp=fs*.4,ey=cy-fs*.06,sh=SHADE[lv];
@@ -465,7 +466,7 @@ function face(cx,cy,rr,lv,st){
   if(lv===1){ctx.strokeStyle=sh;ctx.fillStyle=sh;lw(rr*.07);for(const a of[-.55,0,.55]){const wob=Math.sin(t*9+id+a*3)*.08,x1=cx+Math.sin(a)*rr*.9,y1=cy-Math.cos(a)*rr*.9,x2=cx+Math.sin(a+wob)*rr*1.22,y2=cy-Math.cos(a+wob)*rr*1.22;
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();circle(x2,y2,rr*.08);ctx.fill();
     if(idle>1.5){const ph=(t*.7+a+id*.3)%1.6;if(ph<.35){const g=Math.sin(ph/.35*Math.PI);sparkle(x2,y2,rr*.16*g,'#ffe066');ctx.fillStyle=sh}}}}
-  if(lv===5){ctx.strokeStyle=sh;lw(rr*.06);const bx=cx-rr*.15,by=cy-rr*.95,sw=Math.sin(t*2+id)*rr*.06;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx-rr*.05,by-rr*.2,bx+sw,by-rr*.3);ctx.stroke();
+  if(lv===5){ctx.strokeStyle=sh;lw(rr*.06);const bx=cx-rr*.15,by=cy-rr*.95,sw=idle>1.5?Math.sin(t*4+id)*rr*.16:Math.sin(t*2+id)*rr*.06;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx-rr*.05,by-rr*.2,bx+sw,by-rr*.3);ctx.stroke();
     circle(bx+sw+rr*.02,by-rr*.42,rr*.12);ctx.stroke()}
   if(lv===6){const hc='#5b4a86',hp='#cfb3ff';ctx.strokeStyle=hc;lw(rr*.09);ctx.beginPath();ctx.ellipse(cx,cy-rr*.02,rr*1.0,rr*1.06,0,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
     for(const s of[-1,1]){ctx.fillStyle=hc;rrect(cx+s*rr*.92-rr*.15,cy-rr*.3,rr*.3,rr*.46,rr*.13);ctx.fill();ctx.fillStyle=hp;rrect(cx+s*rr*.92-rr*.08+(s<0?rr*.06:-rr*.06),cy-rr*.24,rr*.12,rr*.34,rr*.06);ctx.fill()}
@@ -479,6 +480,7 @@ function face(cx,cy,rr,lv,st){
   if(lv===8&&!squish)happy=true;
   const sleeping=lv===2&&idle>3&&!squish&&!happy&&!wor,vibing=lv===6&&idle>2&&!squish&&!wor;if(vibing)happy=true;
   if(lv===5&&!squish&&!happy&&Math.sin(t*.9+id)>.93)st.wink=true;
+  const dizzy=lv===5&&idle>2&&!squish&&!happy&&!wor&&(t+id*3.1)%9<1.6;
   // --- eyes
   const shades=false,bigEye=lv===4||lv===1||lv===6,lids=lv===2;
   if(lv===4&&!squish&&!happy){er*=1.3}
@@ -488,6 +490,7 @@ function face(cx,cy,rr,lv,st){
     if(happy){lw(er*.55);ctx.beginPath();ctx.arc(x,y+er*.35,er*.8,Math.PI*1.15,Math.PI*1.85);ctx.stroke()}
     else if(squish){lw(er*.55);ctx.beginPath();ctx.moveTo(x-s*er*.7,y-er*.6);ctx.lineTo(x+s*er*.5,y);ctx.lineTo(x-s*er*.7,y+er*.6);ctx.stroke()}
     else if(blink||(st.wink&&s<0)){lw(er*.55);ctx.beginPath();ctx.moveTo(x-er*.75,y);ctx.lineTo(x+er*.75,y);ctx.stroke()}
+    else if(dizzy){lw(er*.32);ctx.beginPath();for(let a=0;a<TAU*2.2;a+=.3){const rad=er*(.15+.42*a/TAU),ang=a*s+t*7*s;a?ctx.lineTo(x+Math.cos(ang)*rad,y+Math.sin(ang)*rad):ctx.moveTo(x+Math.cos(ang)*rad,y+Math.sin(ang)*rad)}ctx.stroke()}
     else if(sleeping){lw(er*.5);ctx.beginPath();ctx.arc(x,y-er*.1,er*.85,Math.PI*.15,Math.PI*.85);ctx.stroke()}
     else if(lids){const dy=Math.sin(t*1.3+id)*er*.12;ctx.fillStyle=INK;ctx.beginPath();ctx.ellipse(x,y+dy,er*1.05,er*1.05,0,0,Math.PI);ctx.fill();
       ctx.fillStyle='#fff';circle(x+er*.35,y+dy+er*.45,er*.22);ctx.fill();lw(er*.45);ctx.beginPath();ctx.moveTo(x-er*1.2,y+dy);ctx.quadraticCurveTo(x,y+dy-er*.35,x+er*1.2,y+dy);ctx.stroke()}
@@ -518,7 +521,7 @@ function face(cx,cy,rr,lv,st){
   else if(lv===5){ctx.beginPath();ctx.arc(mx,my-mw*.4,mw,Math.PI*.1,Math.PI*.9);ctx.stroke();ctx.fillStyle='#e8607d';ctx.beginPath();ctx.arc(mx+mw*.25,my+mw*.5,mw*.4,0,Math.PI);ctx.lineTo(mx-mw*.15,my+mw*.5);ctx.fill()}
   else if(lv===6){ctx.beginPath();ctx.arc(mx,my-mw*.35,mw*.9,Math.PI*.18,Math.PI*.82);ctx.stroke()}
   else if(lv===7){const o=.25+.75*Math.abs(Math.sin(t*9+id*2));ell(mx,my+mw*.2,mw*.8,mw*.75*o+.6);ctx.fill();
-    const wc=Math.floor(t/1.6+id),word=idle>2?(rare(wc)<.06?'huss huss huss':LLM_WORDS[wc%LLM_WORDS.length]):null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
+    const lt=t+id*7.3,wc=Math.floor(lt/LLM_EVERY),word=lt%LLM_EVERY<2.2?(rare(wc)<.1?'huss huss huss':LLM_WORDS[wc%LLM_WORDS.length]):null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
     const bw=word?Math.max(rr*.42,ctx.measureText(word).width+bh*.8):rr*.42,bx=cx+rr*.62+bw/2*.8,by=cy-rr*.82;ctx.fillStyle='#fff';rrect(bx-bw/2,by-bh/2,bw,bh,bh/2);ctx.fill();ctx.beginPath();ctx.moveTo(bx-bw/2+bh*.5,by+bh*.4);ctx.lineTo(bx-bw/2+bh*.2,by+bh*.85);ctx.lineTo(bx-bw/2+bh*.95,by+bh*.45);ctx.fill();
     ctx.fillStyle=INK;if(word){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(word,bx,by+fz*.05)}else{for(let k=0;k<3;k++){const on=Math.floor(t*3+id)%4>k;ctx.globalAlpha=on?1:.25;circle(bx+(k-1)*bw*.24,by,bh*.12);ctx.fill()}ctx.globalAlpha=1}}
   else{ctx.beginPath();ctx.moveTo(mx-mw*1.1,my);ctx.quadraticCurveTo(mx-mw*.55,my+mw,mx,my);ctx.quadraticCurveTo(mx+mw*.55,my+mw,mx+mw*1.1,my);ctx.stroke()}
