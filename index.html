@@ -54,6 +54,14 @@ button.soft{background:#f1edfa;color:var(--ink);min-height:50px;font-size:17px}
 .menuas{margin:14px 0 0;font-size:15px}.menuas:empty{display:none}
 .chk{display:flex;align-items:center;gap:10px;justify-content:center;font-weight:500;font-size:16px;margin:2px 0 4px;cursor:pointer}
 .chk input{width:20px;height:20px;accent-color:var(--ink)}
+.savebox{background:#fff8dc;border-radius:20px;padding:14px;margin:0 0 14px}
+.savehead{margin:0 0 4px;font-size:18px}
+#afterBtns[hidden]{display:none}
+#over.lock .card{pointer-events:none}
+#over .card{animation:cardIn .35s ease}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+#agiText small{display:block;font-size:18px;color:var(--ink);opacity:.6;text-shadow:none;margin-top:4px}
+.menuas button.link.inline{font-weight:600}
 </style>
 </head>
 <body>
@@ -100,17 +108,18 @@ button.soft{background:#f1edfa;color:var(--ink);min-height:50px;font-size:17px}
 <div class="ov" id="over" hidden><div class="card over">
   <p class="big" id="final">0</p>
   <p class="sub" id="bestline"></p>
-  <form id="who" class="who" hidden autocomplete="on">
+  <form id="who" class="who savebox" hidden autocomplete="on">
+    <p class="savehead">Save your score to the top list</p>
     <input id="nick" name="nickname" maxlength="16" placeholder="Nickname" autocomplete="nickname" enterkeyhint="next">
     <input id="mail" name="email" type="email" maxlength="120" placeholder="Email (optional)" autocomplete="email" enterkeyhint="done">
     <p class="fine">Your email is never shown. We only use it to contact winners.</p>
-    <button type="submit" id="save">Add to top list</button>
-    <button type="button" class="link" id="skip">Skip</button>
+    <button type="submit" id="save">Save score</button>
+    <button type="button" class="link" id="skip">Don't save</button>
   </form>
   <p class="as" id="as" hidden><span id="asName"></span> · <button type="button" class="link inline" id="change">change</button></p>
   <ol id="board" class="board"></ol>
-  <button id="again">Play again</button>
-  <button class="link" id="toMenu">Menu</button>
+  <div id="afterBtns"><button id="again">Play again</button>
+  <button class="link" id="toMenu">Menu</button></div>
 </div></div>
 
 <script>
@@ -286,7 +295,7 @@ function finishMerges(dt){
     const mx=(b.cx+o.cx)/2,my=(b.cy+o.cy)/2,vx=((b.xs[0]-b.pxs[0])+(o.xs[0]-o.pxs[0]))/2/STEP,vy=((b.ys[0]-b.pys[0])+(o.ys[0]-o.pys[0]))/2/STEP,lv=b.lv+1;
     burst(mx,my,COL[b.lv],12+b.lv*2,120+b.lv*20);if(b.lv+1>maxLv)maxLv=b.lv+1;{const gain=.25*(b.lv+1);if(danger>.6&&gain>=1){for(const q of blobs)q.happy=Math.max(q.happy,.9);sfx.phew()}danger=Math.max(0,danger-gain)}
     if(lv>=COL.length){sfx.sing();score+=5000;for(let k=0;k<2;k++){burst(mx,my,'#ffd86b',60,340);burst(mx,my,'#cfb3ff',40,280);burst(mx,my,'#ff9ea8',30,240)}
-      if(state==='run'){singM={x:mx,y:my,t:0};state='pause';agiM=null;moment('Singularity','#9b5cf6');growAll()}continue}
+      if(state==='run'){singM={x:mx,y:my,t:0};state='pause';agiM=null;growAll();moment('Singularity','#9b5cf6',`Models are now ${Math.round((SIZE-1)*100)}% bigger`)}continue}
     score+=PTS[lv];const nb=makeBlob(lv,mx,my,0,0,.78);nb.happy=.9;nb.age=.06;add.push(nb);sfx.merge(lv);
     if(lv===7&&!llmDone&&state==='run'){llmDone=true;moment('Reached LLM','#e8566a')}
     if(lv===8&&!agiDone&&state==='run'){agiDone=true;agiM={b:nb,t:0};sfx.agi();moment('Reached AGI','#e0a100')}}
@@ -318,6 +327,7 @@ const SB_URL='https://zawqguuquxgrsdfodrvz.supabase.co',SB_KEY='sb_publishable_K
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 let pid=store.get('m2a-pid');if(!pid){pid=(crypto.randomUUID?crypto.randomUUID():'p'+Date.now()+Math.random().toString(16).slice(2));store.set('m2a-pid',pid)}
 let profile=null;try{profile=JSON.parse(store.get('m2a-profile')||'null')}catch(e){}
+if(profile&&profile.skip&&!profile.optOut)profile=null;
 const online=()=>!!(SB_URL&&SB_KEY);
 async function sb(path,opt={}){const r=await fetch(SB_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith('eyJ')?{Authorization:'Bearer '+SB_KEY}:{}),'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok)throw new Error(r.status);return r}
 function localBoard(){try{return JSON.parse(store.get('m2a-board')||'[]')}catch(e){return[]}}
@@ -337,39 +347,47 @@ async function showBoard(id='board'){const el=$(id),req=++boardReq;if(!el.childr
   try{const{top,me}=await fetchBoard();if(req!==boardReq)return; // a newer load is on its way: ignore this stale one
     el.innerHTML=top.length?top.map((r,i)=>row(r,i+1)).join('')+(me?(me.rank>top.length+1?'<li class="gap">⋯</li>':'')+row(me,me.rank):''):'<li class="msg">No scores yet. Be the first!</li>'}
   catch(e){if(req===boardReq)el.innerHTML='<li class="msg">Top list offline right now</li>'}}
-function showWho(edit){$('who').hidden=false;$('as').hidden=true;$('nick').value=profile?profile.nick:'';$('mail').value=profile?profile.mail:'';$('save').textContent=edit?'Save':'Add to top list';$('nick').focus()}
-function showAs(){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Saved as '+(profile.nick||'Anonymous blob')}
+function showWho(edit){$('who').hidden=false;$('as').hidden=true;$('afterBtns').hidden=!edit?true:false;$('nick').value=profile&&!profile.optOut?profile.nick:'';$('mail').value=profile&&!profile.optOut?profile.mail:'';$('save').textContent=edit?'Save':'Save score';$('skip').textContent=edit?'Cancel':"Don't save"}
+function showAs(){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Saved as '+(profile.nick||'Anonymous blob');$('change').textContent='change'}
+function showNotSaved(){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Not saved';$('change').textContent='save it'}
 let lastRun=null;
 // name change from the menu: online, add a 0-point row so the top list shows the new name
 async function rename(){if(!profile||profile.skip)return;if(online()){if(store.get('m2a-scored'))try{await submit(0,0)}catch(e){}}else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i>=0){b[i].nickname=profile.nick||'Anonymous blob';store.set('m2a-board',JSON.stringify(b))}}}
-function menuAs(){$('menuAs').textContent=!profile?'':profile.skip?'Not on the top list':'Playing as '+(profile.nick||'Anonymous blob')}
+function menuAs(){const el=$('menuAs'),synced=+store.get('m2a-synced')||0;
+  if(!profile&&best>synced){el.innerHTML=`Your best ${best.toLocaleString('en')} isn't saved · <button type="button" class="link inline" id="saveBest">save it</button>`;$('saveBest').addEventListener('click',()=>$('openProfile').click())}
+  else el.textContent=!profile?'':profile.skip?'Not on the top list':'Playing as '+(profile.nick||'Anonymous blob')}
 menuAs();
 function view(id,on){$(id).hidden=!on;$('start').hidden=on||state!=='menu'}
 $('openBoard').addEventListener('click',()=>{view('boardView',true);showBoard('board2')});
 $('boardBack').addEventListener('click',()=>view('boardView',false));
-$('openProfile').addEventListener('click',()=>{view('profileView',true);$('nick2').value=profile?profile.nick:'';$('mail2').value=profile?profile.mail:'';$('onBoard').checked=!profile||!profile.skip});
+$('openProfile').addEventListener('click',()=>{view('profileView',true);$('nick2').value=profile?profile.nick:'';$('mail2').value=profile?profile.mail:'';$('onBoard').checked=!profile||!profile.skip;$('nick2').focus()});
 $('profBack').addEventListener('click',()=>view('profileView',false));
-$('prof').addEventListener('submit',async e=>{e.preventDefault();profile={nick:$('nick2').value.trim().slice(0,16),mail:$('mail2').value.trim().slice(0,120),skip:!$('onBoard').checked};
-  store.set('m2a-profile',JSON.stringify(profile));menuAs();view('profileView',false);rename().then(syncBest)});
+$('prof').addEventListener('submit',async e=>{e.preventDefault();const off=!$('onBoard').checked;profile={nick:$('nick2').value.trim().slice(0,16),mail:$('mail2').value.trim().slice(0,120),skip:off,optOut:off};
+  store.set('m2a-profile',JSON.stringify(profile));view('profileView',false);rename().then(syncBest).then(menuAs);menuAs()});
 async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;
   try{await submit(lastRun.score,lastRun.lv);if(lastRun.score>=(+store.get('m2a-synced')||0))store.set('m2a-synced',String(lastRun.score))}catch(e){}showBoard()}
 // Safety net: make sure this phone's best score is on the top list (covers failed uploads,
 // and scores played before a name was entered). Runs on load and whenever the profile is saved.
 async function syncBest(){if(!online()||!profile||profile.skip||best<=0)return;if(best<=(+store.get('m2a-synced')||0))return;
-  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best))}catch(e){}}
+  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best));menuAs()}catch(e){}}
 syncBest();
-$('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
+$('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false,optOut:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
   if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun().then(syncBest)});
-$('skip').addEventListener('click',()=>{if(!profile||profile.skip){profile={nick:'',mail:'',skip:true};store.set('m2a-profile',JSON.stringify(profile))}$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me';menuAs()});
-$('change').addEventListener('click',()=>{$('change').textContent='change';showWho(true)});
+// "Don't save" only applies to this game (the score stays on the phone and can be saved later)
+$('skip').addEventListener('click',()=>{if(profile&&!profile.skip)showAs();else showNotSaved();menuAs()});
+$('change').addEventListener('click',()=>showWho(!!(profile&&!profile.skip)));
 
 function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localStorage.setItem('m2a-best',String(best));localStorage.setItem('m2a-bestlv',String(maxLv))}catch(e){}}
   $('final').textContent=score.toLocaleString('en');$('bestline').textContent=score>=best&&score>0?'New best!':'Best '+best.toLocaleString('en');
-  $('over').hidden=false;lastRun={score,lv:maxLv,saved:false};$('change').textContent='change';
-  if(!profile)showWho(false);else if(profile.skip){$('who').hidden=true;$('as').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}else showAs();
-  if(score>0&&profile&&!profile.skip)saveRun();else showBoard();if(profile)$('again').focus()}
+  // ignore taps for a moment: fingers are often still tapping the jar when the game ends
+  const ov=$('over');ov.classList.add('lock');ov.hidden=false;setTimeout(()=>ov.classList.remove('lock'),900);
+  lastRun={score,lv:maxLv,saved:false};
+  if(profile&&profile.skip){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}
+  else if(!profile&&score>0)showWho(false); // must choose: Save score or Don't save, before Play again appears
+  else if(!profile)showNotSaved();else showAs();
+  if(score>0&&profile&&!profile.skip)saveRun();else showBoard();menuAs()}
 
-function moment(txt,col){const e=$('agiText');e.textContent=txt;e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
+function moment(txt,col,sub){const e=$('agiText');e.textContent=txt;if(sub){const m=document.createElement('small');m.textContent=sub;e.appendChild(m)}e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
 
 /* ================= drawing ================= */
 // Very subtle LiU AI Society watermark inside the jar. Put the society logo in the repo as logo.png
