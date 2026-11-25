@@ -440,7 +440,7 @@ LOGO.src='https://www.liuais.com/images/LiUAISlogo.svg';
 function watermark(){const cx=LX,cy=TOPLINE+(FLOOR-TOPLINE)*.36,fs=CW*.085;ctx.save();ctx.globalAlpha=.055;
   if(logoOk){const lw=CW*.34,lh=lw*LOGOT.height/LOGOT.width;ctx.globalAlpha=.06;ctx.drawImage(LOGOT,cx-lw/2,cy-lh-fs*.6,lw,lh);ctx.globalAlpha=.055}
   ctx.fillStyle=INK;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`600 ${fs}px Fredoka,system-ui,sans-serif`;ctx.fillText('LiU AI Society',cx,cy+(logoOk?fs*.2:0));ctx.restore()}
-function rrect(x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
+function rrect(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h)}
 function path(xs,ys,n){ // smooth Catmull-Rom loop
   ctx.beginPath();ctx.moveTo(xs[0],ys[0]);
   for(let i=0;i<n;i++){const a=(i-1+n)%n,b=(i+1)%n,c=(i+2)%n;
@@ -455,8 +455,8 @@ function sparkle(x,y,s,c){ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y-s);ctx.
    4 CNN: curious big eyes that watch your finger   5 RNN: silly, tongue out, loop antenna, winks
    6 Transformer: cool shades + smirk     7 LLM: never stops talking   8 AGI: zen, halo, sparkles */
 const rare=c=>{const x=Math.sin(c*12.9898)*43758.5453;return x-Math.floor(x)}; // stable pseudo-random per bubble
-const LLM_EVERY=30; // seconds between real words; otherwise the bubble shows typing dots
-const LLM_WORDS=['hi!','hmm','ok','lol','42','why?','yes!','tea?','AGI?','brb','wow','uwu'];
+const BUBBLES=[];const LLM_EVERY=30; // seconds between real words; otherwise the bubble shows typing dots
+const LLM_WORDS=['Great question!','Certainly!','As an AI…','Let me think…','You’re absolutely right!','My apologies!','Let’s delve in!','Hope this helps!','Here’s a summary:','Thinking…','In conclusion…','I can’t help with that.','Happy to help!','Good catch!'];
 function face(cx,cy,rr,lv,st){
   const t=performance.now()/1000,fs=9+rr*.5,sp=fs*.4,ey=cy-fs*.06,sh=SHADE[lv];
   let er=fs*.15;let{lx,ly}=st;const id=st.id,idle=st.idle||0;let{squish,happy,blink}=st;const wor=lv!==8&&!happy&&!squish&&st.worry>0?st.worry:0;if(wor){lx*=.3;ly=-er*.5}
@@ -521,9 +521,9 @@ function face(cx,cy,rr,lv,st){
   else if(lv===5){ctx.beginPath();ctx.arc(mx,my-mw*.4,mw,Math.PI*.1,Math.PI*.9);ctx.stroke();ctx.fillStyle='#e8607d';ctx.beginPath();ctx.arc(mx+mw*.25,my+mw*.5,mw*.4,0,Math.PI);ctx.lineTo(mx-mw*.15,my+mw*.5);ctx.fill()}
   else if(lv===6){ctx.beginPath();ctx.arc(mx,my-mw*.35,mw*.9,Math.PI*.18,Math.PI*.82);ctx.stroke()}
   else if(lv===7){const o=.25+.75*Math.abs(Math.sin(t*9+id*2));ell(mx,my+mw*.2,mw*.8,mw*.75*o+.6);ctx.fill();
-    const lt=t+id*7.3,wc=Math.floor(lt/LLM_EVERY),word=lt%LLM_EVERY<2.2?(rare(wc)<.1?'huss huss huss':LLM_WORDS[wc%LLM_WORDS.length]):null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
-    const bw=word?Math.max(rr*.42,ctx.measureText(word).width+bh*.8):rr*.42,bx=cx+rr*.62+bw/2*.8,by=cy-rr*.82;ctx.fillStyle='#fff';rrect(bx-bw/2,by-bh/2,bw,bh,bh/2);ctx.fill();ctx.beginPath();ctx.moveTo(bx-bw/2+bh*.5,by+bh*.4);ctx.lineTo(bx-bw/2+bh*.2,by+bh*.85);ctx.lineTo(bx-bw/2+bh*.95,by+bh*.45);ctx.fill();
-    ctx.fillStyle=INK;if(word){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(word,bx,by+fz*.05)}else{for(let k=0;k<3;k++){const on=Math.floor(t*3+id)%4>k;ctx.globalAlpha=on?1:.25;circle(bx+(k-1)*bw*.24,by,bh*.12);ctx.fill()}ctx.globalAlpha=1}}
+    const lt=t+id*7.3,wc=Math.floor(lt/LLM_EVERY),word=lt%LLM_EVERY<2.2?(rare(wc)<.04?'huss huss huss':LLM_WORDS[wc%LLM_WORDS.length]):null,bh=rr*.26,fz=bh*.62;ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;
+    const bw0=0;BUBBLES.push(()=>{ctx.font=`600 ${fz}px Fredoka,system-ui,sans-serif`;const bw=word?Math.max(rr*.42,ctx.measureText(word).width+bh*.8):rr*.42,bx=Math.max(BL+bw/2+2,Math.min(BR-bw/2-2,cx+rr*.62+bw/2*.8)),by=cy-rr*.82;ctx.fillStyle='#fff';rrect(bx-bw/2,by-bh/2,bw,bh,bh/2);ctx.fill();{const tx=Math.max(bx-bw/2+bh*.5,Math.min(bx+bw/2-bh*.9,cx+rr*.55));ctx.beginPath();ctx.moveTo(tx,by+bh*.4);ctx.lineTo(tx-bh*.3,by+bh*.85);ctx.lineTo(tx+bh*.45,by+bh*.45);ctx.fill()}
+    ctx.fillStyle=INK;if(word){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(word,bx,by+fz*.05)}else{for(let k=0;k<3;k++){const on=Math.floor(t*3+id)%4>k;ctx.globalAlpha=on?1:.25;circle(bx+(k-1)*bw*.24,by,bh*.12);ctx.fill()}ctx.globalAlpha=1}});}
   else{ctx.beginPath();ctx.moveTo(mx-mw*1.1,my);ctx.quadraticCurveTo(mx-mw*.55,my+mw,mx,my);ctx.quadraticCurveTo(mx+mw*.55,my+mw,mx+mw*1.1,my);ctx.stroke()}
 }
 
@@ -571,9 +571,10 @@ function trajectory(r){
 function draw(){
   const t=performance.now()/1000;
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle='#f3f0fa';ctx.fillRect(0,0,SW,SH);ctx.setTransform(DPR*SC,0,0,DPR*SC,OX*DPR,OY*DPR);
-  ctx.fillStyle='#e8e3f5';rrect(BL-8,TOP-8,CW+16,FLOOR-TOP+16,26);ctx.fill();
-  const dk=state==='run'?dangerK():0;ctx.fillStyle=`rgb(${239+16*dk|0},${235-12*dk|0},${248-16*dk|0})`;rrect(BL,TOP,CW,FLOOR-TOP,20);ctx.fill();watermark();
-  ctx.strokeStyle=danger>0&&Math.floor(t*6)%2?'#ff6f8f':'rgba(255,111,143,.35)';ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(BL+10,TOPLINE);ctx.lineTo(BR-10,TOPLINE);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#e8e3f5';rrect(BL-8,TOPLINE,CW+16,FLOOR-TOPLINE+8,[0,0,26,26]);ctx.fill();
+  for(const x of[BL-4,BR+4]){circle(x,TOPLINE,4);ctx.fill()} // rounded lip on top of each wall
+  const dk=state==='run'?dangerK():0;ctx.fillStyle=`rgb(${239+16*dk|0},${235-12*dk|0},${248-16*dk|0})`;rrect(BL,TOPLINE,CW,FLOOR-TOPLINE,[0,0,20,20]);ctx.fill();watermark();
+  ctx.strokeStyle=danger>0&&Math.floor(t*6)%2?'#ff6f8f':'rgba(255,111,143,.35)';ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(BL+3,TOPLINE);ctx.lineTo(BR-3,TOPLINE);ctx.stroke();ctx.setLineDash([]);
   if(state==='run'){
     // aim preview
     const r=R[cur],pc=`hsl(${(260-50*power)} 70% ${80-12*power}%)`;
@@ -604,6 +605,7 @@ function draw(){
     else if(b.lv===4&&(down||charging)){const l=lookAt(b.cx,b.cy,er*.4);lx=l.lx;ly=l.ly}
     else if(b.lv===4&&(b.idle||0)>1){const t2=performance.now()/1000+b.id;lx=Math.sin(t2*.8)*er*.45;ly=Math.sin(t2*.53)*er*.2}else{lx=Math.max(-1,Math.min(1,b.vx/300))*er*.35;ly=Math.max(-1,Math.min(1,b.vy/300))*er*.35}
     drawBlob(b.xs,b.ys,b.n,b.lv,b.cx,b.cy,rr,{lx,ly,id:b.id,idle:b.idle||0,squish:!ag&&b.A/b.A0<.84,happy:b.happy>0,blink:!ag&&b.blink<0,worry:WOR})}
+  for(const f of BUBBLES)f();BUBBLES.length=0;
   if(ag){const rr=ag.r*ag.s;drawBlob(ag.xs,ag.ys,ag.n,8,ag.cx,ag.cy,rr,{lx:0,ly:0,id:ag.id,happy:true})}
   for(const p of parts){ctx.globalAlpha=1-p.t/.7;ctx.fillStyle=p.c;circle(p.x,p.y,p.r*(1-p.t/.9));ctx.fill()}ctx.globalAlpha=1;
   for(const q of cpops){const k=q.t/.9,sc=q.t<.12?q.t/.12*1.25:1.25-.25*Math.min(1,(q.t-.12)/.15);ctx.save();ctx.globalAlpha=1-Math.max(0,(k-.6)/.4);ctx.translate(q.x,q.y-q.t*40);ctx.scale(sc,sc);
