@@ -329,7 +329,7 @@ let pid=store.get('m2a-pid');if(!pid){pid=(crypto.randomUUID?crypto.randomUUID()
 let profile=null;try{profile=JSON.parse(store.get('m2a-profile')||'null')}catch(e){}
 if(profile&&profile.skip&&!profile.optOut)profile=null;
 const online=()=>!!(SB_URL&&SB_KEY);
-async function sb(path,opt={}){const r=await fetch(SB_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith('eyJ')?{Authorization:'Bearer '+SB_KEY}:{}),'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok)throw new Error(r.status);return r}
+async function sb(path,opt={}){const r=await fetch(SB_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith('eyJ')?{Authorization:'Bearer '+SB_KEY}:{}),'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok){let t='';try{t=(await r.text()).slice(0,160)}catch(e){}throw new Error(r.status+' '+t)}return r}
 function localBoard(){try{return JSON.parse(store.get('m2a-board')||'[]')}catch(e){return[]}}
 async function submit(sc,lv){const name=profile.nick||'Anonymous blob';lv=Math.max(0,Math.min(8,lv|0)); // a Singularity counts as AGI (database allows 0-8)
   if(online()){await sb('scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_id:pid,nickname:name,email:profile.mail||null,score:sc,best_model:lv})});if(sc>0)store.set('m2a-scored','1')}
@@ -355,10 +355,12 @@ let lastRun=null;
 async function rename(){if(!profile||profile.skip)return;if(online()){if(store.get('m2a-scored'))try{await submit(0,0)}catch(e){}}else{const b=localBoard(),i=b.findIndex(x=>x.player_id===pid);if(i>=0){b[i].nickname=profile.nick||'Anonymous blob';store.set('m2a-board',JSON.stringify(b))}}}
 function menuAs(){const el=$('menuAs'),synced=+store.get('m2a-synced')||0;
   if(!profile&&best>synced){el.innerHTML=`Your best ${best.toLocaleString('en')} isn't saved · <button type="button" class="link inline" id="saveBest">save it</button>`;$('saveBest').addEventListener('click',()=>$('openProfile').click())}
+  else if(profile&&!profile.skip&&best>synced&&online()){el.innerHTML=`Your best ${best.toLocaleString('en')} isn't on the top list · <button type="button" class="link inline" id="upBest">upload it</button>`;
+    $('upBest').addEventListener('click',async()=>{el.textContent='Uploading…';const err=await syncBest(true);if(err)el.textContent="Couldn't upload: "+err;else{el.textContent='Uploaded ✓ '+best.toLocaleString('en');setTimeout(menuAs,2500)}})}
   else el.textContent=!profile?'':profile.skip?'Not on the top list':'Playing as '+(profile.nick||'Anonymous blob')}
 menuAs();
 function view(id,on){$(id).hidden=!on;$('start').hidden=on||state!=='menu'}
-$('openBoard').addEventListener('click',()=>{view('boardView',true);showBoard('board2')});
+$('openBoard').addEventListener('click',async()=>{view('boardView',true);await syncBest();showBoard('board2')});
 $('boardBack').addEventListener('click',()=>view('boardView',false));
 $('openProfile').addEventListener('click',()=>{view('profileView',true);$('nick2').value=profile?profile.nick:'';$('mail2').value=profile?profile.mail:'';$('onBoard').checked=!profile||!profile.skip;$('nick2').focus()});
 $('profBack').addEventListener('click',()=>view('profileView',false));
@@ -366,11 +368,11 @@ $('prof').addEventListener('submit',async e=>{e.preventDefault();const off=!$('o
   store.set('m2a-profile',JSON.stringify(profile));view('profileView',false);rename().then(syncBest).then(menuAs);menuAs()});
 async function saveRun(){if(!lastRun||lastRun.saved||!profile||profile.skip||lastRun.score<=0)return;lastRun.saved=true;
   try{await submit(lastRun.score,lastRun.lv);if(lastRun.score>=(+store.get('m2a-synced')||0))store.set('m2a-synced',String(lastRun.score))}
-  catch(e){lastRun.saved=false;if(!$('as').hidden){$('asName').textContent="Couldn't save, check your connection";$('change').textContent='try again'}}showBoard()}
+  catch(e){lastRun.saved=false;console.warn('save failed',e);if(!$('as').hidden){$('asName').textContent="Couldn't save ("+String(e.message||'network').slice(0,40)+')';$('change').textContent='try again'}}showBoard()}
 // Safety net: make sure this phone's best score is on the top list (covers failed uploads,
 // and scores played before a name was entered). Runs on load and whenever the profile is saved.
-async function syncBest(){if(!online()||!profile||profile.skip||best<=0)return;if(best<=(+store.get('m2a-synced')||0))return;
-  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best));menuAs()}catch(e){}}
+async function syncBest(manual){if(!online()||!profile||profile.skip||best<=0)return;if(best<=(+store.get('m2a-synced')||0))return;
+  try{await submit(best,+store.get('m2a-bestlv')||0);store.set('m2a-synced',String(best));if(!manual)menuAs();return null}catch(e){if(!manual)menuAs();return e.message||'network error'}}
 syncBest();
 $('who').addEventListener('submit',e=>{e.preventDefault();profile={nick:$('nick').value.trim().slice(0,16),mail:$('mail').value.trim().slice(0,120),skip:false,optOut:false};store.set('m2a-profile',JSON.stringify(profile));showAs();menuAs();
   if(lastRun&&lastRun.saved){submit(lastRun.score,lastRun.lv).then(showBoard,showBoard)}else saveRun().then(syncBest)});
@@ -386,7 +388,7 @@ function gameOver(){state='over';sfx.over();if(score>best){best=score;try{localS
   if(profile&&profile.skip){$('who').hidden=true;$('as').hidden=false;$('afterBtns').hidden=false;$('asName').textContent='Not on the top list';$('change').textContent='add me'}
   else if(!profile&&score>0)showWho(false); // must choose: Save score or Don't save, before Play again appears
   else if(!profile)showNotSaved();else showAs();
-  if(score>0&&profile&&!profile.skip)saveRun();else showBoard();menuAs()}
+  if(score>0&&profile&&!profile.skip)saveRun().then(()=>syncBest());else syncBest().then(()=>showBoard());menuAs()}
 
 function moment(txt,col,sub){const e=$('agiText');e.textContent=txt;if(sub){const m=document.createElement('small');m.textContent=sub;e.appendChild(m)}e.style.color=col;e.hidden=true;void e.offsetWidth;e.hidden=false;clearTimeout(mT);mT=setTimeout(()=>{e.hidden=true},1500)}
 
