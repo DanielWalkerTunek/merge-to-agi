@@ -636,7 +636,9 @@ function start(){audio();try{const d=document.documentElement;if(!document.fulls
   reset();state='run';$('start').hidden=true;$('over').hidden=true}
 $('go').addEventListener('click',start);$('again').addEventListener('click',start);
 let down=false;
-cv.addEventListener('pointerdown',e=>{audio();if(state==='run')endTut();if(trySwap(toWX(e.clientX),toWY(e.clientY)))return;down=true;setAim(toWX(e.clientX),toWY(e.clientY));startCharge()});
+// right mouse button = swap with next blob (no menu, no shot)
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{audio();if(e.button===2){if(state==='run'&&!charging){const p=nextPos();trySwap(p.nx,p.ny)}return}if(state==='run')endTut();if(trySwap(toWX(e.clientX),toWY(e.clientY)))return;down=true;setAim(toWX(e.clientX),toWY(e.clientY));startCharge()});
 cv.addEventListener('pointermove',e=>{if(down||e.pointerType==='mouse')setAim(toWX(e.clientX),toWY(e.clientY))});
 cv.addEventListener('pointerup',e=>{if(down){setAim(toWX(e.clientX),toWY(e.clientY));release()}down=false});
 cv.addEventListener('pointercancel',()=>{down=false;charging=false});
